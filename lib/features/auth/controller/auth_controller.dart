@@ -1,9 +1,12 @@
 import 'package:dio_riverpod/apis/user_api.dart';
+import 'package:dio_riverpod/features/auth/views/login_view.dart';
+import 'package:dio_riverpod/models/current_user.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../apis/auth_api.dart';
 import '../../../core/util.dart';
 import '../../../models/user_model.dart';
+import '../../home/views/home_view.dart';
 
 final authControllerProvider =
     StateNotifierProvider<AuthController, bool>((ref) {
@@ -13,11 +16,23 @@ final authControllerProvider =
   );
 });
 
-final userDetailsProvider = FutureProvider((ref) {
-  final authController = ref.watch(authControllerProvider.notifier);
-  return authController.getUserData();
+final currentUserDetailsProvider = FutureProvider((ref) {
+  final currentUserId = ref.watch(currentUserAccountProvider).value!.user.id;
+  final userDetails = ref.watch(userDetailsProvider(currentUserId));
+  return userDetails.value;
 });
 
+final userDetailsProvider = FutureProvider.family((ref, String uid) {
+  final authController = ref.watch(authControllerProvider.notifier);
+  return authController.getUserData(uid);
+});
+
+final currentUserAccountProvider = FutureProvider((ref) {
+  final authController = ref.watch(authControllerProvider.notifier);
+  return authController.getCurrentUserData();
+});
+
+/// this cannot be tested because it contains buildContext
 class AuthController extends StateNotifier<bool> {
   final AuthAPI _authAPI;
   final UserApi _userApi;
@@ -29,8 +44,6 @@ class AuthController extends StateNotifier<bool> {
         _userApi = userApi,
         super(false);
   // state = isLoading
-
-  //Future<model.Account?> currentUser() => _authAPI.currentUserAccount();
 
   void signUp({
     required String email,
@@ -48,24 +61,11 @@ class AuthController extends StateNotifier<bool> {
     res.fold(
       (l) => showSnackBar(context, l.message),
       (r) async {
-        // UserModel userModel = UserModel(
-        //   email: email,
-        //   name: getNameFromEmail(email),
-        //   followers: const [],
-        //   following: const [],
-        //   profilePic: '',
-        //   bannerPic: '',
-        //   uid: r.$id,
-        //   bio: '',
-        //   isTwitterBlue: false,
-        // );
-        //final res2 = await _userAPI.saveUserData(userModel);
-        var data = r.data;
-        var userData = UserModel.fromJson(data);
-
         showSnackBar(
-            context, 'Accounted created! Please login.${userData.email}');
-        // Navigator.push(context, LoginView.route());
+            context, 'Accounted created! Please login.${r.user.name}');
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (context) => const LoginView(),
+        ));
       },
     );
   }
@@ -84,16 +84,22 @@ class AuthController extends StateNotifier<bool> {
     res.fold(
       (l) => showSnackBar(context, l.message),
       (r) {
-        debugPrint(r.toString());
-        // Navigator.push(context, HomeView.route());
+        debugPrint(r.user.name);
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (context) => const HomePage(),
+        ));
       },
     );
   }
 
-  Future<UserModel> getUserData() async {
-    final res = await _userApi.getUserData();
-    final userdata = UserModel.fromMap(res.data);
+  Future<UserModel> getUserData(String uid) async {
+    final userdata = await _userApi.getUserData(uid);
     return userdata;
+  }
+
+  Future<CurrentUser> getCurrentUserData() async {
+    var res = await _userApi.currentUser();
+    return res;
   }
 
   void logout(BuildContext context) async {

@@ -1,28 +1,28 @@
 // To parse this JSON data, do
 //
-//     final userModel = userModelFromJson(jsonString);
+//     final currentUser = currentUserFromJson(jsonString);
 
 import 'dart:convert';
 
-UserModel userModelFromJson(String str) => UserModel.fromJson(json.decode(str));
+CurrentUser currentUserFromJson(String str) => CurrentUser.fromJson(json.decode(str));
 
-String userModelToJson(UserModel data) => json.encode(data.toJson());
+String currentUserToJson(CurrentUser data) => json.encode(data.toJson());
 
-class UserModel {
+class CurrentUser {
     User user;
 
-    UserModel({
+    CurrentUser({
         required this.user,
     });
 
-    UserModel copyWith({
+    CurrentUser copyWith({
         User? user,
     }) => 
-        UserModel(
+        CurrentUser(
             user: user ?? this.user,
         );
 
-    factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
+    factory CurrentUser.fromJson(Map<String, dynamic> json) => CurrentUser(
         user: User.fromJson(json["user"]),
     );
 
@@ -32,48 +32,42 @@ class UserModel {
 }
 
 class User {
+    String id;
     String name;
     String email;
-    String password;
-    String id;
     int v;
 
     User({
+        required this.id,
         required this.name,
         required this.email,
-        required this.password,
-        required this.id,
         required this.v,
     });
 
     User copyWith({
+        String? id,
         String? name,
         String? email,
-        String? password,
-        String? id,
         int? v,
     }) => 
         User(
+            id: id ?? this.id,
             name: name ?? this.name,
             email: email ?? this.email,
-            password: password ?? this.password,
-            id: id ?? this.id,
             v: v ?? this.v,
         );
 
     factory User.fromJson(Map<String, dynamic> json) => User(
+        id: json["_id"],
         name: json["name"],
         email: json["email"],
-        password: json["password"],
-        id: json["_id"],
         v: json["__v"],
     );
 
     Map<String, dynamic> toJson() => {
+        "_id": id,
         "name": name,
         "email": email,
-        "password": password,
-        "_id": id,
         "__v": v,
     };
 }

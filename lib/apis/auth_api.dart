@@ -5,9 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fpdart/fpdart.dart';
 import '../core/failure.dart';
 import '../core/types_def.dart';
-import '../models/user_model.dart';
+import '../models/error_model.dart';
+import '../models/login_model.dart';
+import '../models/signup_model.dart';
 
 
+/// this can be tested
+// this provider is use to provide for this class...
 final authAPIProvider = Provider((ref) {
   final account = ref.watch(dioUnAuthClientProvider);
   return AuthAPI(
@@ -16,12 +20,12 @@ final authAPIProvider = Provider((ref) {
 });
 
 abstract class IAuthAPI {
-  FutureEither<dynamic> signUp({
+  FutureEither<UserSignupModel> signUp({
     required String email,
     required String password,
     required String username,
   });
-  FutureEither<dynamic> login({
+  FutureEither<LoginModel> login({
     required String email,
     required String password,
   });
@@ -37,7 +41,7 @@ class AuthAPI implements IAuthAPI {
   }) : _unAuthClient = unAuthClient;
 
   @override
-  FutureEither<UserModel> login({
+  FutureEither<LoginModel> login({
     required String email,
     required String password,
   }) async {
@@ -47,19 +51,23 @@ class AuthAPI implements IAuthAPI {
         'email': email,
       };
       final response = await _unAuthClient.post(
-        "www.nigeria.com",
+        "/auth/login",
         data: body,
       );
+      debugPrint("data : $response");
       var data = response.data;
-        var userData = UserModel.fromJson(data);
-        debugPrint(userData.toString());
-     
+      var userData = LoginModel.fromJson(data);
+      setAccessToken(userData.tokens.accessToken);
+      setRefreshToken(userData.tokens.refreshToken);
       return right(userData);
     } on DioException catch (e, stackTrace) {
+       var err = e.response?.data;
+      debugPrint("Dio Error: $err");
+        var error = ErrorModel.fromJson(err);
       return left(
-        Failure(e.message ?? 'Some unexpected error occurred', stackTrace),
+        Failure(error.msg ?? 'Some unexpected error occurred', stackTrace),
       );
-    } catch (e, stackTrace) {
+    }  catch (e, stackTrace) {
       return left(
         Failure(e.toString(), stackTrace),
       );
@@ -67,51 +75,41 @@ class AuthAPI implements IAuthAPI {
   }
 
   @override
-  FutureEither<dynamic> signUp(
+  FutureEither<UserSignupModel> signUp(
       {required String email,
       required String password,
       required String username}) async {
     try {
       Map<String, dynamic> body = {
         'password': password,
-        'username': username,
+        'name': username,
         'email': email
-        //'token': await storage.read(key: 'fcmToken'),
-        //'platform': await storage.read(key: 'DeviceName')
+       
       };
       final response = await _unAuthClient.post(
-        "www.nigeria.com",
+        "/auth/register",
         data: body,
       );
-      
-      return right(response);
-    } on DioException catch (e, stackTrace) {
+      debugPrint("data : $response");
+        var userData = userSignupModelFromJson(response.data);
+      return right(userData);
+    } 
+    on DioException catch (e, stackTrace) {
+       var err = e.response?.data;
+      debugPrint("Dio Error: $err");
+        var error = ErrorModel.fromJson(err);
       return left(
-        Failure(e.message ?? 'Some unexpected error occurred', stackTrace),
+        Failure(error.msg ?? 'Some unexpected error occurred', stackTrace),
       );
-    } catch (e, stackTrace) {
+    } 
+    catch (e, stackTrace) {
+        debugPrint("Internal Error: $e");
       return left(
         Failure(e.toString(), stackTrace),
       );
     }
   }
-
-  // @override
-  // Future<UserModel?> currentUserAccount() async {
-  //   try {
-  //     var response = await _authClient.get(
-  //       "www.nigeria,com",
-  //     );
-  //     var data = response.data;
-  //     var userData = UserModel.fromJson(data);
-  //     return userData;
-  //   } on DioException {
-  //     return null;
-  //   } catch (e) {
-  //     return null;
-  //   }
-  // }
-
+  
   @override
   FutureEitherVoid logout() async {
     try {
